@@ -5,8 +5,8 @@
 #define DOORSERVO 18
 #define BUZZER 16
 
-const char* ssid = "Keerthi";
-const char* password = "Madhumitha";
+const char* ssid = "Sharmila";
+const char* password = "Sharmi";
 
 WebServer server(80);
 Servo doorServo;
