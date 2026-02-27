@@ -27,12 +27,12 @@ Your system has TWO face recognition implementations:
 
 ## 🎯 RECOMMENDED: Use the OLD SYSTEM
 
-**To register Keerthi's face using the OLD SYSTEM:**
+**To register Sharmila's face using the OLD SYSTEM:**
 
 1. **Open**: http://localhost:3000/face-registration.html
 
-2. **Login** with Keerthi's account:
-   - Email: ganthimathiv2006@gmail.com
+2. **Login** with Sharmila's account:
+   - Email: sharmilaanand0612@gmail.com
    - Password: [your password]
 
 3. **Click "Start Registration"**
@@ -76,7 +76,7 @@ You were trying to use the NEW SYSTEM (v2) which requires:
 ## ✅ Next Steps
 
 1. Go to: http://localhost:3000/face-registration.html
-2. Register Keerthi's face using webcam
+2. Register Sharmila's face using webcam
 3. Test at: http://localhost:3000/door-access.html
 
 That's it! Much simpler than the v2 system.
