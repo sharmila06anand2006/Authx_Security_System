@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Test - Smart Home</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      display: none;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    pre {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Login Test</h1>
+    
+    <div class="info">
+      <strong>Admin Credentials:</strong><br>
+      Email: admin@smarthome.com<br>
+      Password: Admin@123
+    </div>
+    
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="Email" value="admin@smarthome.com" required>
+      <input type="password" id="password" placeholder="Password" value="Admin@123" required>
+      <button type="submit">Test Login</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+  </div>
+  
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const resultDiv = document.getElementById('result');
+      
+      resultDiv.style.display = 'none';
+      resultDiv.textContent = 'Testing login...';
+      resultDiv.className = 'result';
+      resultDiv.style.display = 'block';
+      
+      try {
+        console.log('Sending login request...');
+        console.log('Email:', email);
+        console.log('Password:', password);
+        
+        const response = await fetch(`${API_URL}/auth/signin`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        console.log('Response status:', response.status);
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (response.ok) {
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `
+            <strong>✓ Login Successful!</strong><br><br>
+            <strong>User Info:</strong><br>
+            <pre>${JSON.stringify(data.user, null, 2)}</pre>
+            <strong>Token:</strong><br>
+            <pre>${data.token.substring(0, 50)}...</pre>
+            <br>
+            <a href="/" style="color: #667eea;">Go to Main Page</a>
+          `;
+        } else {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `
+            <strong>✗ Login Failed</strong><br><br>
+            <strong>Error:</strong> ${data.message}<br><br>
+            <strong>Status:</strong> ${response.status}<br><br>
+            <strong>Response:</strong><br>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        resultDiv.className = 'result error';
+        resultDiv.innerHTML = `
+          <strong>✗ Network Error</strong><br><br>
+          <strong>Error:</strong> ${error.message}<br><br>
+          <strong>Details:</strong> Could not connect to server. Make sure the server is running on port 3000.
+        `;
+      }
+    });
+    
+    // Auto-test on page load
+    console.log('Login test page loaded');
+    console.log('Server URL:', API_URL);
+  </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Home Automation</title>
+  <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+  <div id="app">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="screen active">
+      <div class="auth-container">
+        <h1 data-translate="welcome">Welcome to Smart Home</h1>
+        
+        <div class="language-selector">
+          <select id="language-select">
+            <option value="english">English</option>
+            <option value="hindi">हिंदी</option>
+            <option value="tamil">தமிழ்</option>
+            <option value="telugu">తెలుగు</option>
+          </select>
+        </div>
+        
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-tab="signin" data-translate="signin">Sign In</button>
+          <button class="tab-btn" data-tab="signup" data-translate="signup">Sign Up</button>
+        </div>
+        
+        <!-- Sign In Form -->
+        <form id="signin-form" class="auth-form active">
+          <input type="email" id="signin-email" placeholder="Email" required>
+          <input type="password" id="signin-password" placeholder="Password" required>
+          <button type="submit" data-translate="signin">Sign In</button>
+        </form>
+        
+        <!-- Sign Up Form -->
+        <form id="signup-form" class="auth-form">
+          <input type="email" id="signup-email" placeholder="Email" required>
+          <input type="password" id="signup-password" placeholder="Password" required>
+          <input type="text" id="signup-nickname" placeholder="Nickname" required>
+          <button type="submit" data-translate="signup">Sign Up</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="screen">
+      <nav class="navbar">
+        <h2 data-translate="dashboard">Dashboard</h2>
+        <div class="nav-actions">
+          <button id="logout-btn" class="btn-logout">Logout</button>
+          <div class="profile-icon" id="profile-icon">
+            <span id="user-nickname">U</span>
+          </div>
+        </div>
+      </nav>
+      
+      <div class="dashboard-content">
+        <div class="card">
+          <h3 data-translate="voiceChat">Voice Chatbot</h3>
+          <div id="emotion-display" class="emotion-display">
+            <span data-translate="emotion">Emotion:</span> <span id="emotion-text">-</span>
+          </div>
+          <div id="voice-tone-display" class="tone-display">
+            <div><strong>Pitch:</strong> <span id="pitch-value">-</span></div>
+            <div><strong>Energy:</strong> <span id="energy-value">-</span></div>
+            <div><strong>Tempo:</strong> <span id="tempo-value">-</span></div>
+          </div>
+          <div id="conversation-display" class="conversation-display"></div>
+          <button id="start-voice" data-translate="startVoice">Start Voice Chat</button>
+          <button id="stop-voice" style="display:none;" data-translate="stopVoice">Stop Voice Chat</button>
+        </div>
+        
+        <div class="card">
+          <h3 data-translate="doorAccess">Door Access</h3>
+          
+          <!-- Admin: Group OTP Selection -->
+          <div id="admin-otp-section" style="display:none;">
+            <label style="display:block; margin-bottom:10px; font-weight:bold; color:#667eea;">Select Group:</label>
+            <select id="group-select" style="width:100%; padding:10px; margin-bottom:10px; border:2px solid #ddd; border-radius:5px;">
+              <option value="TEMP">Temporary OTP (5 min)</option>
+              <option value="FAMILY">Family (Permanent)</option>
+              <option value="SERVANT">Servant (Permanent)</option>
+              <option value="FRIEND">Friend (Permanent)</option>
+            </select>
+            <button id="generate-otp" data-translate="generateOtp" style="display:none;">Generate OTP</button>
+            <div id="otp-display" style="display:none;"></div>
+          </div>
+          
+          <!-- All Users: OTP Input -->
+          <input type="text" id="otp-input" placeholder="Enter 6-digit OTP" maxlength="6">
+          <button id="verify-otp" data-translate="verifyOtp">Verify OTP</button>
+          
+          <!-- Non-Admin: Info Message -->
+          <div id="otp-info" style="display:none; padding: 15px; background: #fff3cd; border-radius: 5px; margin-top: 10px; color: #856404; font-size: 14px;">
+            ℹ️ Please contact admin to get OTP for door access.
+          </div>
+          
+          <!-- Group Info Display -->
+          <div id="group-info" style="display:none; padding: 10px; background: #e3f2fd; border-radius: 5px; margin-top: 10px; font-size: 13px; color: #1565c0;">
+            <strong>Available Groups:</strong><br>
+            • FAMILY: 123456<br>
+            • SERVANT: 567890<br>
+            • FRIEND: 999999<br>
+            • TEMP: Admin-generated
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3 data-translate="visitorLog">Visitor Log</h3>
+          <div id="visitor-list"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Camera Modal -->
+    <div id="camera-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Facial Recognition</h3>
+        <video id="camera-preview" autoplay playsinline></video>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+        <p id="camera-status">Initializing camera...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="ml-models.js?v=7"></script>
+  <script src="voice-assistant.js?v=7"></script>
+  <script src="app.js?v=7"></script>
+</body>
+</html>

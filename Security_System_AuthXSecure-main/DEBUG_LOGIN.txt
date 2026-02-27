@@ -1,0 +1,78 @@
+========================================
+DEBUG LOGIN ISSUE
+========================================
+
+STEP 1: Open Browser
+---------------------
+1. Open Chrome, Edge, or Firefox
+2. Go to: http://localhost:3000
+
+STEP 2: Open Browser Console
+-----------------------------
+1. Press F12 (opens Developer Tools)
+2. Click on "Console" tab
+3. Keep this open while you try to login
+
+STEP 3: Clear Cache & Reload
+-----------------------------
+1. With console open, press: Ctrl + Shift + R
+2. This forces a fresh reload
+3. You should see in console:
+   🚀 Smart Home App Loading...
+   ✅ DOM Content Loaded
+   📝 Initializing auth...
+   ✅ Auth initialized
+
+STEP 4: Try to Login
+---------------------
+1. Enter email: 230589.ec@rmkec.ac.in
+2. Enter password: keerthi123
+3. Click "Sign In" button
+
+STEP 5: Check Console Output
+-----------------------------
+You should see:
+=== SIGN IN ATTEMPT ===
+Sign in button clicked
+Email: 230589.ec@rmkec.ac.in
+Password length: 10
+Sending login request to: http://localhost:3000/api/auth/signin
+Response status: 200
+✅ Login successful!
+
+STEP 6: If You See Errors
+--------------------------
+Look for RED error messages in console.
+Common errors:
+
+Error 1: "signin-form not found"
+→ Page didn't load properly
+→ Hard refresh: Ctrl + Shift + R
+
+Error 2: "Failed to fetch"
+→ Server not running
+→ Check terminal shows "Server running on port 3000"
+
+Error 3: "Invalid credentials"
+→ Wrong password
+→ Use: keerthi123
+
+Error 4: No console output at all
+→ JavaScript not loading
+→ Close browser completely
+→ Reopen and try again
+
+WHAT TO TELL ME:
+-----------------
+If still not working, tell me:
+1. What do you see in the console? (copy the messages)
+2. Do you see any RED errors?
+3. Does the "Sign In" button do anything when clicked?
+4. Are you on the "Sign In" tab (not "Sign Up")?
+
+YOUR CREDENTIALS:
+-----------------
+Email: 230589.ec@rmkec.ac.in
+Password: keerthi123
+
+========================================

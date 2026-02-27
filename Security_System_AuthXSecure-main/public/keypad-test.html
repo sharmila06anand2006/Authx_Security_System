@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keypad Simulator - Smart Home</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 100%;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .display {
+      background: #f0f0f0;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 8px;
+      border: 3px solid #667eea;
+    }
+    
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .key {
+      padding: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .key:hover {
+      background: #5568d3;
+      transform: scale(1.05);
+    }
+    
+    .key:active {
+      transform: scale(0.95);
+    }
+    
+    .key.special {
+      background: #e74c3c;
+    }
+    
+    .key.special:hover {
+      background: #c0392b;
+    }
+    
+    .key.submit {
+      background: #27ae60;
+    }
+    
+    .key.submit:hover {
+      background: #229954;
+    }
+    
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #1565c0;
+    }
+    
+    .info strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔢 Keypad Simulator</h1>
+    <p class="subtitle">Hardware Keypad Test Interface</p>
+    
+    <div class="display" id="display">------</div>
+    
+    <div class="keypad">
+      <button class="key" onclick="pressKey('1')">1</button>
+      <button class="key" onclick="pressKey('2')">2</button>
+      <button class="key" onclick="pressKey('3')">3</button>
+      
+      <button class="key" onclick="pressKey('4')">4</button>
+      <button class="key" onclick="pressKey('5')">5</button>
+      <button class="key" onclick="pressKey('6')">6</button>
+      
+      <button class="key" onclick="pressKey('7')">7</button>
+      <button class="key" onclick="pressKey('8')">8</button>
+      <button class="key" onclick="pressKey('9')">9</button>
+      
+      <button class="key special" onclick="clearInput()">*<br><small>Clear</small></button>
+      <button class="key" onclick="pressKey('0')">0</button>
+      <button class="key submit" onclick="submitOTP()">#<br><small>Submit</small></button>
+    </div>
+    
+    <div id="status" class="status disconnected">
+      ⚠️ Connecting to server...
+    </div>
+    
+    <div class="info">
+      <strong>Instructions:</strong>
+      This simulates a hardware keypad. Press numbers to send input to the main website in real-time. Open the main page (index.html) to see the OTP field update automatically!
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket;
+    let otpBuffer = "";
+    
+    // Connect to server
+    socket = io('http://localhost:3000');
+    
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      updateStatus(true);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      updateStatus(false);
+    });
+    
+    function updateStatus(connected) {
+      const statusEl = document.getElementById('status');
+      if (connected) {
+        statusEl.className = 'status connected';
+        statusEl.textContent = '✓ Connected to server';
+      } else {
+        statusEl.className = 'status disconnected';
+        statusEl.textContent = '❌ Disconnected from server';
+      }
+    }
+    
+    function pressKey(digit) {
+      if (otpBuffer.length < 6) {
+        otpBuffer += digit;
+        updateDisplay();
+        
+        // Send to server
+        socket.emit('keypad-input', { digit: digit });
+        console.log('Sent digit:', digit);
+        
+        // Auto-submit when 6 digits
+        if (otpBuffer.length === 6) {
+          setTimeout(() => {
+            submitOTP();
+          }, 500);
+        }
+      }
+    }
+    
+    function clearInput() {
+      otpBuffer = "";
+      updateDisplay();
+      
+      // Send clear command to server
+      socket.emit('keypad-clear');
+      console.log('Cleared OTP');
+    }
+    
+    function submitOTP() {
+      if (otpBuffer.length > 0) {
+        // Send submit command to server
+        socket.emit('keypad-submit', { otp: otpBuffer });
+        console.log('Submitted OTP:', otpBuffer);
+        
+        // Clear after submit
+        setTimeout(() => {
+          clearInput();
+        }, 1000);
+      }
+    }
+    
+    function updateDisplay() {
+      const display = document.getElementById('display');
+      if (otpBuffer.length === 0) {
+        display.textContent = '------';
+      } else {
+        display.textContent = otpBuffer.padEnd(6, '-');
+      }
+    }
+    
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        pressKey(e.key);
+      } else if (e.key === 'Enter') {
+        submitOTP();
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        clearInput();
+      }
+    });
+  </script>
+</body>
+</html>

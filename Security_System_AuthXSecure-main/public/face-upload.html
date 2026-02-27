@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Face Images - Smart Home</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+    }
+    h1 { color: #667eea; margin-bottom: 10px; text-align: center; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+    .upload-area {
+      border: 3px dashed #667eea;
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover { background: #f8f9ff; border-color: #5568d3; }
+    .upload-area.dragover { background: #e8ebff; border-color: #667eea; }
+    .upload-icon { font-size: 48px; margin-bottom: 10px; }
+    input[type="file"] { display: none; }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .preview-item {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .preview-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .preview-item .remove {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .preview-item .status {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 5px;
+      font-size: 12px;
+      text-align: center;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status-box {
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-weight: bold;
+      text-align: center;
+    }
+    .status-box.info { background: #e3f2fd; color: #1565c0; }
+    .status-box.success { background: #d4edda; color: #155724; }
+    .status-box.error { background: #f8d7da; color: #721c24; }
+    .info-box {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border-left: 4px solid #667eea;
+    }
+    .info-box h3 { color: #667eea; margin-bottom: 10px; font-size: 16px; }
+    .info-box ul { margin-left: 20px; }
+    .info-box li { margin: 5px 0; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Upload Face Images</h1>
+    <p class="subtitle">Upload multiple photos for face registration</p>
+    
+    <div class="info-box">
+      <h3>📋 Upload Guidelines:</h3>
+      <ul>
+        <li>Upload 15-20 clear photos of your face</li>
+        <li>Include different angles, expressions, and lighting</li>
+        <li>Supported formats: JPG, PNG, WEBP</li>
+        <li>Face should be clearly visible in each photo</li>
+      </ul>
+    </div>
+    
+    <div id="status" class="status-box info" style="display:none;">
+      Ready to upload
+    </div>
+    
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📁</div>
+      <h3>Click or Drag & Drop Images Here</h3>
+      <p>Upload multiple face photos (JPG, PNG, WEBP)</p>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+    
+    <div id="previewGrid" class="preview-grid"></div>
+    
+    <button id="processBtn" onclick="processImages()" style="display:none;">
+      🔄 Process Images & Register Face
+    </button>
+  </div>
+  
+  <!-- FaceAPI.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let uploadedImages = [];
+    let modelsLoaded = false;
+    
+    // Setup drag and drop
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+    
+    function handleFiles(files) {
+      const imageFiles = Array.from(files).filter(file => 
+        file.type.startsWith('image/')
+      );
+      
+      if (imageFiles.length === 0) {
+        showStatus('Please select image files only', 'error');
+        return;
+      }
+      
+      imageFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedImages.push({
+            file: file,
+            dataUrl: e.target.result,
+            processed: false
+          });
+          displayPreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    function displayPreviews() {
+      const grid = document.getElementById('previewGrid');
+      grid.innerHTML = '';
+      
+      uploadedImages.forEach((img, index) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        item.innerHTML = `
+          <img src="${img.dataUrl}" alt="Face ${index + 1}">
+          <button class="remove" onclick="removeImage(${index})">×</button>
+          <div class="status">${img.processed ? '✓ Processed' : 'Pending'}</div>
+        `;
+        grid.appendChild(item);
+      });
+      
+      document.getElementById('processBtn').style.display = 
+        uploadedImages.length >= 15 ? 'block' : 'none';
+      
+      if (uploadedImages.length > 0 && uploadedImages.length < 15) {
+        showStatus(`${uploadedImages.length} images uploaded. Need at least 15 images.`, 'info');
+      } else if (uploadedImages.length >= 15) {
+        showStatus(`${uploadedImages.length} images ready to process!`, 'success');
+      }
+    }
+    
+    function removeImage(index) {
+      uploadedImages.splice(index, 1);
+      displayPreviews();
+    }
+    
+    async function processImages() {
+      try {
+        showStatus('Loading FaceAPI.js models...', 'info');
+        document.getElementById('processBtn').disabled = true;
+        
+        // Load models
+        if (!modelsLoaded) {
+          const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+          
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+          ]);
+          
+          modelsLoaded = true;
+        }
+        
+        showStatus('Processing images and extracting face embeddings...', 'info');
+        
+        const faceSamples = [];
+        
+        for (let i = 0; i < uploadedImages.length; i++) {
+          showStatus(`Processing image ${i + 1}/${uploadedImages.length}...`, 'info');
+          
+          // Create image element
+          const img = new Image();
+          img.src = uploadedImages[i].dataUrl;
+          
+          await new Promise(resolve => {
+            img.onload = resolve;
+          });
+          
+          // Detect face and extract descriptor
+          const detection = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+          
+          if (!detection) {
+            showStatus(`⚠️ No face detected in image ${i + 1}. Skipping...`, 'error');
+            continue;
+          }
+          
+          faceSamples.push({
+            descriptor: Array.from(detection.descriptor),
+            landmarks: detection.landmarks.positions.map(p => [p.x, p.y]),
+            timestamp: Date.now()
+          });
+          
+          uploadedImages[i].processed = true;
+          displayPreviews();
+        }
+        
+        if (faceSamples.length < 15) {
+          showStatus(`❌ Only ${faceSamples.length} valid faces detected. Need at least 15.`, 'error');
+          document.getElementById('processBtn').disabled = false;
+          return;
+        }
+        
+        showStatus(`✓ ${faceSamples.length} faces processed! Saving to server...`, 'success');
+        
+        // Save to server
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        if (!token || !user) {
+          showStatus('❌ Please login first', 'error');
+          return;
+        }
+        
+        const response = await fetch(`${API_URL}/user/register-face-v2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            faceSamples: faceSamples
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showStatus(`✅ Face registered successfully! ${data.sampleCount} samples saved.`, 'success');
+          
+          setTimeout(() => {
+            alert('Face registration complete! You can now use face recognition.');
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          showStatus('❌ Error: ' + data.message, 'error');
+          document.getElementById('processBtn').disabled = false;
+        }
+        
+      } catch (error) {
+        console.error('Processing error:', error);
+        showStatus('❌ Error: ' + error.message, 'error');
+        document.getElementById('processBtn').disabled = false;
+      }
+    }
+    
+    function showStatus(message, type) {
+      const statusBox = document.getElementById('status');
+      statusBox.textContent = message;
+      statusBox.className = `status-box ${type}`;
+      statusBox.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

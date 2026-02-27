@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Registration - Webcam</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 { color: #667eea; margin-bottom: 10px; }
+    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+    video {
+      width: 100%;
+      max-width: 640px;
+      border-radius: 15px;
+      background: #000;
+      margin: 20px 0;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-weight: bold;
+    }
+    .status.info { background: #e3f2fd; color: #1565c0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    .progress {
+      width: 100%;
+      height: 30px;
+      background: #e0e0e0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Face Registration with FaceAPI.js</h1>
+    <p class="subtitle">Automatic webcam capture with 128D embeddings</p>
+    
+    <div id="status" class="status info">Click "Start Registration" to begin</div>
+    
+    <div class="progress">
+      <div class="progress-bar" id="progressBar">0/20</div>
+    </div>
+    
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <button id="startBtn" onclick="startRegistration()">Start Registration</button>
+    <button id="registerBtn" onclick="registerFace()" style="display:none;">Complete Registration</button>
+  </div>
+  
+  <!-- FaceAPI.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let video, canvas, ctx;
+    let stream;
+    let faceSamples = [];
+    let modelsLoaded = false;
+    let captureInterval;
+    
+    async function startRegistration() {
+      try {
+        updateStatus('Loading FaceAPI.js models...', 'info');
+        document.getElementById('startBtn').disabled = true;
+        
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        
+        // Load models
+        if (!modelsLoaded) {
+          const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+          
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+          ]);
+          
+          modelsLoaded = true;
+        }
+        
+        updateStatus('Starting camera...', 'info');
+        
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        
+        video.srcObject = stream;
+        video.style.display = 'block';
+        
+        await new Promise(resolve => {
+          video.onloadedmetadata = resolve;
+        });
+        
+        updateStatus('✓ Camera ready! Capturing photos automatically...', 'success');
+        
+        // Start automatic capture every 2 seconds
+        captureInterval = setInterval(capturePhoto, 2000);
+        
+      } catch (error) {
+        console.error('Error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+        document.getElementById('startBtn').disabled = false;
+      }
+    }
+    
+    async function capturePhoto() {
+      try {
+        // Detect face and extract descriptor
+        const detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        
+        if (!detection) {
+          updateStatus('⚠️ No face detected. Please look at the camera...', 'warning');
+          return;
+        }
+        
+        faceSamples.push({
+          descriptor: Array.from(detection.descriptor),
+          landmarks: detection.landmarks.positions.map(p => [p.x, p.y]),
+          timestamp: Date.now()
+        });
+        
+        updateProgress();
+        
+        if (faceSamples.length >= 20) {
+          clearInterval(captureInterval);
+          
+          // Stop camera
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+          video.style.display = 'none';
+          
+          document.getElementById('registerBtn').style.display = 'inline-block';
+          updateStatus(`✅ ${faceSamples.length} photos captured! Click "Complete Registration"`, 'success');
+        } else {
+          updateStatus(`✓ Photo ${faceSamples.length}/20 captured...`, 'info');
+        }
+        
+      } catch (error) {
+        console.error('Capture error:', error);
+      }
+    }
+    
+    function updateProgress() {
+      const progress = (faceSamples.length / 20) * 100;
+      const progressBar = document.getElementById('progressBar');
+      progressBar.style.width = progress + '%';
+      progressBar.textContent = `${faceSamples.length}/20`;
+    }
+    
+    async function registerFace() {
+      try {
+        updateStatus('Saving face data to server...', 'info');
+        document.getElementById('registerBtn').disabled = true;
+        
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        if (!token || !user) {
+          updateStatus('❌ Please login first', 'error');
+          setTimeout(() => {
+            window.location.href = '/login.html';
+          }, 2000);
+          return;
+        }
+        
+        const response = await fetch(`${API_URL}/user/register-face-v2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            faceSamples: faceSamples
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus(`✅ Face registered successfully! ${data.sampleCount} samples saved.`, 'success');
+          
+          setTimeout(() => {
+            alert('Registration complete! You can now use face recognition.');
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          updateStatus('❌ Error: ' + data.message, 'error');
+          document.getElementById('registerBtn').disabled = false;
+        }
+        
+      } catch (error) {
+        console.error('Registration error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+        document.getElementById('registerBtn').disabled = false;
+      }
+    }
+    
+    function updateStatus(message, type) {
+      const statusBox = document.getElementById('status');
+      statusBox.textContent = message;
+      statusBox.className = `status ${type}`;
+    }
+  </script>
+</body>
+</html>

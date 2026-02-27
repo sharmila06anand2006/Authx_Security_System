@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Registration - Smart Door System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .camera-section {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .status-message.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+        }
+
+        .instructions {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Face Registration</h1>
+        <p class="subtitle">Register your face for smart door access</p>
+
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ul>
+                <li>Enter your name below</li>
+                <li>Click "Start Camera" to begin</li>
+                <li>Position your face in the center</li>
+                <li>Click "Capture Photo" when ready</li>
+                <li>Review and submit to register</li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="userName">Your Name:</label>
+            <input type="text" id="userName" placeholder="Enter your full name" required>
+        </div>
+
+        <div class="camera-section">
+            <video id="video" autoplay></video>
+            <canvas id="canvas"></canvas>
+            <img id="preview" class="preview-image" style="display: none;">
+        </div>
+
+        <div class="button-group">
+            <button id="startCamera" class="btn-primary">📷 Start Camera</button>
+            <button id="capturePhoto" class="btn-secondary" style="display: none;">📸 Capture Photo</button>
+            <button id="retake" class="btn-secondary" style="display: none;">🔄 Retake</button>
+            <button id="submitPhoto" class="btn-success" style="display: none;">✓ Register Face</button>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const preview = document.getElementById('preview');
+        const userName = document.getElementById('userName');
+        const startCameraBtn = document.getElementById('startCamera');
+        const capturePhotoBtn = document.getElementById('capturePhoto');
+        const retakeBtn = document.getElementById('retake');
+        const submitPhotoBtn = document.getElementById('submitPhoto');
+        const statusMessage = document.getElementById('statusMessage');
+
+        let stream = null;
+        let capturedImage = null;
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+        }
+
+        function hideStatus() {
+            statusMessage.style.display = 'none';
+        }
+
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                startCameraBtn.style.display = 'none';
+                capturePhotoBtn.style.display = 'inline-block';
+                hideStatus();
+            } catch (error) {
+                showStatus('Error accessing camera: ' + error.message, 'error');
+            }
+        });
+
+        capturePhotoBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedImage = canvas.toDataURL('image/jpeg', 0.9);
+            preview.src = capturedImage;
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            
+            capturePhotoBtn.style.display = 'none';
+            retakeBtn.style.display = 'inline-block';
+            submitPhotoBtn.style.display = 'inline-block';
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        retakeBtn.addEventListener('click', async () => {
+            preview.style.display = 'none';
+            retakeBtn.style.display = 'none';
+            submitPhotoBtn.style.display = 'none';
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                capturePhotoBtn.style.display = 'inline-block';
+            } catch (error) {
+                showStatus('Error accessing camera: ' + error.message, 'error');
+            }
+        });
+
+        submitPhotoBtn.addEventListener('click', async () => {
+            const name = userName.value.trim();
+            
+            if (!name) {
+                showStatus('Please enter your name', 'error');
+                return;
+            }
+
+            if (!capturedImage) {
+                showStatus('Please capture a photo first', 'error');
+                return;
+            }
+
+            submitPhotoBtn.disabled = true;
+            showStatus('Registering your face...', 'info');
+
+            try {
+                const response = await fetch('/api/face/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        image: capturedImage
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus('✓ Face registered successfully! You can now use face recognition to access the door.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/door-access.html';
+                    }, 3000);
+                } else {
+                    showStatus('Error: ' + (result.error || 'Registration failed'), 'error');
+                    submitPhotoBtn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('Error registering face: ' + error.message, 'error');
+                submitPhotoBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

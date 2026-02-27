@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Face Registration</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 { color: #667eea; margin-bottom: 20px; }
+    video {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 15px;
+      background: #000;
+      margin: 20px 0;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-weight: bold;
+    }
+    .status.info { background: #e3f2fd; color: #1565c0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .preview {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .preview img {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 3px solid #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Simple Face Registration</h1>
+    <p>Capture 3 photos of your face</p>
+    
+    <div id="status" class="status info">Click "Start Camera" to begin</div>
+    
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <div class="preview" id="preview"></div>
+    
+    <button id="startBtn" onclick="startCamera()">Start Camera</button>
+    <button id="captureBtn" onclick="capturePhoto()" style="display:none;">Capture Photo (<span id="count">0</span>/3)</button>
+    <button id="registerBtn" onclick="registerFace()" style="display:none;">Register Face</button>
+  </div>
+  
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let video, canvas, ctx;
+    let stream;
+    let photos = [];
+    
+    async function startCamera() {
+      try {
+        updateStatus('Starting camera...', 'info');
+        
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        
+        video.srcObject = stream;
+        video.style.display = 'block';
+        
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'inline-block';
+        
+        updateStatus('✓ Camera ready! Click "Capture Photo" to take pictures', 'success');
+        
+      } catch (error) {
+        console.error('Camera error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    function capturePhoto() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
+      const photoData = canvas.toDataURL('image/jpeg', 0.8);
+      photos.push(photoData);
+      
+      // Show preview
+      const img = document.createElement('img');
+      img.src = photoData;
+      document.getElementById('preview').appendChild(img);
+      
+      document.getElementById('count').textContent = photos.length;
+      
+      if (photos.length >= 3) {
+        document.getElementById('captureBtn').style.display = 'none';
+        document.getElementById('registerBtn').style.display = 'inline-block';
+        updateStatus('✓ 3 photos captured! Click "Register Face" to save', 'success');
+      } else {
+        updateStatus(`Photo ${photos.length}/3 captured. Take ${3 - photos.length} more`, 'info');
+      }
+    }
+    
+    async function registerFace() {
+      try {
+        updateStatus('Registering face...', 'info');
+        document.getElementById('registerBtn').disabled = true;
+        
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        if (!token || !user) {
+          updateStatus('❌ Please login first', 'error');
+          setTimeout(() => {
+            window.location.href = '/login.html';
+          }, 2000);
+          return;
+        }
+        
+        const response = await fetch(`${API_URL}/user/register-face-simple`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            photos: photos
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('✅ Face registered successfully!', 'success');
+          
+          // Stop camera
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+          
+          setTimeout(() => {
+            alert('Registration complete! You can now use face recognition.');
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          updateStatus('❌ Error: ' + data.message, 'error');
+          document.getElementById('registerBtn').disabled = false;
+        }
+        
+      } catch (error) {
+        console.error('Registration error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+        document.getElementById('registerBtn').disabled = false;
+      }
+    }
+    
+    function updateStatus(message, type) {
+      const statusBox = document.getElementById('status');
+      statusBox.textContent = message;
+      statusBox.className = `status ${type}`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Registration - FaceAPI.js</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 700px;
+      width: 100%;
+    }
+    h1 { color: #667eea; margin-bottom: 10px; text-align: center; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+    .video-container {
+      position: relative;
+      margin: 20px 0;
+      border-radius: 15px;
+      overflow: hidden;
+      background: #000;
+    }
+    video { width: 100%; border-radius: 15px; }
+    canvas { position: absolute; top: 0; left: 0; }
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .status.info { background: #e3f2fd; color: #1565c0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .progress {
+      background: #f0f0f0;
+      border-radius: 10px;
+      height: 30px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .progress-bar {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    .info-box {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border-left: 4px solid #667eea;
+    }
+    .info-box h3 { color: #667eea; margin-bottom: 10px; font-size: 16px; }
+    .info-box ul { margin-left: 20px; }
+    .info-box li { margin: 5px 0; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎭 Advanced Face Registration</h1>
+    <p class="subtitle">Using FaceAPI.js with 128D Face Embeddings</p>
+    
+    <div class="info-box">
+      <h3>📋 Registration Instructions:</h3>
+      <ul>
+        <li>Position your face clearly in the camera</li>
+        <li>Ensure good lighting conditions</li>
+        <li>Follow on-screen instructions for different poses</li>
+        <li>We'll capture 20 high-quality samples</li>
+      </ul>
+    </div>
+    
+    <div id="status" class="status info">
+      Click "Start Registration" to begin
+    </div>
+    
+    <div class="progress">
+      <div id="progressBar" class="progress-bar">0%</div>
+    </div>
+    
+    <div class="video-container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    
+    <button id="startBtn" onclick="startRegistration()">📷 Start Registration</button>
+    <button id="stopBtn" onclick="stopRegistration()" style="display:none;">⏹️ Stop</button>
+  </div>
+  
+  <!-- FaceAPI.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let video, canvas, overlay;
+    let stream;
+    let faceDescriptors = [];
+    let isRegistering = false;
+    
+    const REQUIRED_SAMPLES = 20;
+    const instructions = [
+      'Look straight at the camera',
+      'Turn head slightly left',
+      'Turn head slightly right',
+      'Tilt head slightly up',
+      'Tilt head slightly down',
+      'Smile naturally',
+      'Neutral expression',
+      'Look straight again',
+      'Move slightly closer',
+      'Move slightly back',
+      'Turn head left more',
+      'Turn head right more',
+      'Look up slightly',
+      'Look down slightly',
+      'Smile wide',
+      'Serious expression',
+      'Look straight - final pose',
+      'Tilt head left',
+      'Tilt head right',
+      'Natural expression - last sample'
+    ];
+    
+    async function startRegistration() {
+      try {
+        updateStatus('Initializing FaceAPI.js...', 'info');
+        updateProgress(0);
+        
+        video = document.getElementById('video');
+        overlay = document.getElementById('overlay');
+        
+        // Load FaceAPI.js models
+        updateStatus('Loading AI models (this may take a moment)...', 'info');
+        
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+        
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        
+        updateStatus('✓ AI models loaded successfully!', 'success');
+        
+        // Start camera
+        updateStatus('Starting camera...', 'info');
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        
+        video.srcObject = stream;
+        
+        await new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            overlay.width = video.videoWidth;
+            overlay.height = video.videoHeight;
+            resolve();
+          };
+        });
+        
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'block';
+        
+        updateStatus('✓ Camera ready! Starting face capture...', 'success');
+        
+        // Wait for camera to stabilize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Start capturing samples
+        isRegistering = true;
+        await captureSamples();
+        
+      } catch (error) {
+        console.error('Registration error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+        stopRegistration();
+      }
+    }
+    
+    async function captureSamples() {
+      faceDescriptors = [];
+      
+      for (let i = 0; i < REQUIRED_SAMPLES; i++) {
+        if (!isRegistering) break;
+        
+        updateStatus(`Sample ${i + 1}/${REQUIRED_SAMPLES}: ${instructions[i]}`, 'info');
+        updateProgress((i / REQUIRED_SAMPLES) * 100);
+        
+        // Wait for user to adjust
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Detect face and extract descriptor
+        const detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        
+        if (!detection) {
+          updateStatus(`⚠️ No face detected for sample ${i + 1}. Please position your face clearly.`, 'warning');
+          i--; // Retry this sample
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        // Draw detection on overlay
+        const ctx = overlay.getContext('2d');
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        faceapi.draw.drawDetections(overlay, detection);
+        faceapi.draw.drawFaceLandmarks(overlay, detection);
+        
+        // Store the 128D face descriptor
+        faceDescriptors.push({
+          descriptor: Array.from(detection.descriptor),
+          landmarks: detection.landmarks.positions.map(p => [p.x, p.y]),
+          timestamp: Date.now()
+        });
+        
+        updateStatus(`✓ Sample ${i + 1}/${REQUIRED_SAMPLES} captured successfully!`, 'success');
+      }
+      
+      if (faceDescriptors.length === REQUIRED_SAMPLES) {
+        updateProgress(100);
+        updateStatus('✓ All samples captured! Saving to server...', 'success');
+        await saveFaceData();
+      }
+    }
+    
+    async function saveFaceData() {
+      try {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        if (!token || !user) {
+          updateStatus('❌ Please login first', 'error');
+          return;
+        }
+        
+        updateStatus('Uploading face data to server...', 'info');
+        
+        const response = await fetch(`${API_URL}/user/register-face-v2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            faceSamples: faceDescriptors
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus(`✅ Face registered successfully! ${data.sampleCount} samples saved.`, 'success');
+          
+          setTimeout(() => {
+            alert('Face registration complete! You can now use face recognition to access the system.');
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          updateStatus('❌ Error: ' + data.message, 'error');
+        }
+        
+      } catch (error) {
+        console.error('Save error:', error);
+        updateStatus('❌ Error saving face data: ' + error.message, 'error');
+      }
+    }
+    
+    function stopRegistration() {
+      isRegistering = false;
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
+      document.getElementById('startBtn').style.display = 'block';
+      document.getElementById('stopBtn').style.display = 'none';
+      
+      updateStatus('Registration stopped. Click "Start" to try again.', 'info');
+      updateProgress(0);
+    }
+    
+    function updateStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+    
+    function updateProgress(percent) {
+      const progressBar = document.getElementById('progressBar');
+      progressBar.style.width = percent + '%';
+      progressBar.textContent = Math.round(percent) + '%';
+    }
+  </script>
+</body>
+</html>

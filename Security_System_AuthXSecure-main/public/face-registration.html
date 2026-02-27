@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Registration - Smart Home</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .video-container {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    
+    video {
+      width: 100%;
+      border-radius: 10px;
+      border: 3px solid #667eea;
+      background: #000;
+    }
+    
+    canvas {
+      display: none;
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      border: 3px dashed #fff;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    
+    .instructions {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      color: #1565c0;
+    }
+    
+    .instructions ul {
+      margin-left: 20px;
+      margin-top: 10px;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+    
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background: #229954;
+    }
+    
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .status.info {
+      background: #fff3cd;
+      color: #856404;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .samples {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .sample {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 2px solid #667eea;
+      object-fit: cover;
+    }
+    
+    .progress {
+      background: #f0f0f0;
+      border-radius: 10px;
+      height: 30px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      background: #667eea;
+      height: 100%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>👤 Face Registration</h1>
+    <p class="subtitle">Register your face for secure access</p>
+    
+    <div class="instructions">
+      <strong>📋 Instructions:</strong>
+      <ul>
+        <li>Position your face in the center circle</li>
+        <li>Ensure GOOD LIGHTING (very important!)</li>
+        <li>Follow on-screen instructions for each sample</li>
+        <li>We'll capture 10 diverse samples with different angles</li>
+        <li>Each sample requires 70%+ confidence</li>
+        <li>The system will guide you through different poses</li>
+      </ul>
+    </div>
+    
+    <div id="status" class="status info">
+      Click "Start Camera" to begin
+    </div>
+    
+    <div class="video-container">
+      <video id="video" autoplay playsinline></video>
+      <div class="overlay"></div>
+      <canvas id="canvas"></canvas>
+    </div>
+    
+    <div class="progress" id="progress-container" style="display:none;">
+      <div class="progress-bar" id="progress-bar">0/10</div>
+    </div>
+    
+    <button id="start-camera" class="btn btn-primary">📷 Start Camera</button>
+    <button id="capture-samples" class="btn btn-success" style="display:none;" disabled>
+      ✓ Capture Face Samples
+    </button>
+    <button id="save-registration" class="btn btn-success" style="display:none;" disabled>
+      💾 Save Registration
+    </button>
+    
+    <div class="samples" id="samples"></div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7"></script>
+  <script>
+    let video, canvas, ctx;
+    let faceModel;
+    let stream;
+    let faceSamples = [];
+    const REQUIRED_SAMPLES = 10;
+    
+    const API_URL = 'http://localhost:3000/api';
+    
+    document.getElementById('start-camera').addEventListener('click', startCamera);
+    document.getElementById('capture-samples').addEventListener('click', captureSamples);
+    document.getElementById('save-registration').addEventListener('click', saveRegistration);
+    
+    async function startCamera() {
+      try {
+        updateStatus('Starting camera...', 'info');
+        
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        
+        // Load face detection model
+        updateStatus('Loading face detection model...', 'info');
+        faceModel = await blazeface.load();
+        updateStatus('✓ Model loaded', 'success');
+        
+        // Start camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 }
+        });
+        
+        video.srcObject = stream;
+        
+        document.getElementById('start-camera').style.display = 'none';
+        document.getElementById('capture-samples').style.display = 'block';
+        document.getElementById('capture-samples').disabled = false;
+        
+        updateStatus('✓ Camera ready! Click "Capture Face Samples" when ready', 'success');
+        
+      } catch (error) {
+        console.error('Camera error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function captureSamples() {
+      try {
+        document.getElementById('capture-samples').disabled = true;
+        document.getElementById('progress-container').style.display = 'block';
+        
+        faceSamples = [];
+        
+        // Instructions for diverse samples
+        const instructions = [
+          'Look straight at the camera',
+          'Turn head slightly left',
+          'Turn head slightly right',
+          'Tilt head slightly up',
+          'Tilt head slightly down',
+          'Smile naturally',
+          'Neutral expression',
+          'Look straight again',
+          'Move closer to camera',
+          'Final sample - hold still'
+        ];
+        
+        for (let i = 0; i < REQUIRED_SAMPLES; i++) {
+          updateStatus(`Sample ${i + 1}/${REQUIRED_SAMPLES}: ${instructions[i]}`, 'info');
+          updateProgress(i + 1);
+          
+          // Wait longer for user to adjust
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Try multiple times to get a good face detection
+          let faces = null;
+          let attempts = 0;
+          const maxAttempts = 5;
+          
+          while (attempts < maxAttempts) {
+            faces = await faceModel.estimateFaces(video, false);
+            
+            if (faces.length === 1 && faces[0].probability[0] > 0.7) {
+              // Good detection
+              break;
+            }
+            
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          
+          if (!faces || faces.length === 0) {
+            updateStatus('❌ No face detected! Please position your face in the circle', 'error');
+            i--;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+          
+          if (faces.length > 1) {
+            updateStatus('❌ Multiple faces detected! Only one person should be in frame', 'error');
+            i--;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+          
+          // Check confidence
+          if (faces[0].probability[0] < 0.7) {
+            updateStatus(`⚠️ Low confidence (${(faces[0].probability[0] * 100).toFixed(1)}%). Retrying...`, 'error');
+            i--;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+          
+          // Capture face image with higher quality
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          
+          // Extract face region for better storage
+          const face = faces[0];
+          const topLeft = face.topLeft;
+          const bottomRight = face.bottomRight;
+          
+          const faceData = {
+            image: canvas.toDataURL('image/jpeg', 0.9), // Higher quality
+            landmarks: face.landmarks,
+            topLeft: topLeft,
+            bottomRight: bottomRight,
+            probability: face.probability[0],
+            timestamp: Date.now(),
+            instruction: instructions[i]
+          };
+          
+          faceSamples.push(faceData);
+          
+          console.log(`✓ Sample ${i + 1} captured: Confidence ${(face.probability[0] * 100).toFixed(1)}%`);
+          
+          // Show sample thumbnail
+          displaySample(faceData.image);
+          
+          // Brief pause between captures
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        updateStatus(`✓ Captured ${REQUIRED_SAMPLES} high-quality samples successfully!`, 'success');
+        document.getElementById('save-registration').style.display = 'block';
+        document.getElementById('save-registration').disabled = false;
+        
+      } catch (error) {
+        console.error('Capture error:', error);
+        updateStatus('❌ Error capturing samples: ' + error.message, 'error');
+        document.getElementById('capture-samples').disabled = false;
+      }
+    }
+    
+    async function saveRegistration() {
+      try {
+        updateStatus('Saving face registration...', 'info');
+        document.getElementById('save-registration').disabled = true;
+        
+        // Get current user from localStorage
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        if (!user) {
+          updateStatus('❌ Please login first!', 'error');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+          return;
+        }
+        
+        // Save face data
+        const response = await fetch(`${API_URL}/user/register-face`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            faceSamples: faceSamples
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('✓ Face registered successfully!', 'success');
+          
+          // Stop camera
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+          
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          updateStatus('❌ Error: ' + data.message, 'error');
+          document.getElementById('save-registration').disabled = false;
+        }
+        
+      } catch (error) {
+        console.error('Save error:', error);
+        updateStatus('❌ Error saving registration: ' + error.message, 'error');
+        document.getElementById('save-registration').disabled = false;
+      }
+    }
+    
+    function updateStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+    
+    function updateProgress(current) {
+      const progressBar = document.getElementById('progress-bar');
+      const percentage = (current / REQUIRED_SAMPLES) * 100;
+      progressBar.style.width = percentage + '%';
+      progressBar.textContent = `${current}/${REQUIRED_SAMPLES}`;
+    }
+    
+    function displaySample(imageData) {
+      const samplesContainer = document.getElementById('samples');
+      const img = document.createElement('img');
+      img.src = imageData;
+      img.className = 'sample';
+      samplesContainer.appendChild(img);
+    }
+  </script>
+</body>
+</html>

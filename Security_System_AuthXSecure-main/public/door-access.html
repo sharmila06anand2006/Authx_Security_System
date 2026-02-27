@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Door Access - Face Recognition</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 20px;
+    }
+    .video-container {
+      position: relative;
+      margin: 20px 0;
+      border-radius: 15px;
+      overflow: hidden;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      max-width: 640px;
+      border-radius: 15px;
+    }
+    canvas { display: none; }
+    .status {
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .status.info { background: #e3f2fd; color: #1565c0; }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.warning { background: #fff3cd; color: #856404; }
+    button {
+      padding: 15px 40px;
+      font-size: 18px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover { background: #5568d3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .user-info {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .user-info h3 { color: #667eea; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚪 Smart Door Access</h1>
+    <p style="color: #666; margin-bottom: 20px;">Face Recognition Entry System</p>
+    
+    <div id="status" class="status info">
+      Click "Start Face Recognition" to begin
+    </div>
+    
+    <div class="video-container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
+    
+    <button id="startBtn" onclick="startRecognition()">📷 Start Face Recognition</button>
+    <button id="stopBtn" onclick="stopRecognition()" style="display:none;">⏹️ Stop</button>
+    
+    <div id="userInfo" class="user-info" style="display:none;">
+      <h3>✅ Person Identified:</h3>
+      <p><strong>Name:</strong> <span id="userName"></span></p>
+      <p><strong>Email:</strong> <span id="userEmail"></span></p>
+      <p><strong>Confidence:</strong> <span id="confidence"></span></p>
+      <p><strong>Status:</strong> <span id="accessStatus"></span></p>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7"></script>
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let video, canvas, ctx;
+    let faceModel;
+    let stream;
+    let recognitionInterval;
+    
+    async function startRecognition() {
+      try {
+        updateStatus('Starting camera...', 'info');
+        
+        video = document.getElementById('video');
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+        
+        // Load face detection model
+        updateStatus('Loading face detection model...', 'info');
+        if (!faceModel) {
+          faceModel = await blazeface.load();
+        }
+        updateStatus('✓ Model loaded', 'success');
+        
+        // Start camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 }
+        });
+        
+        video.srcObject = stream;
+        
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+        
+        updateStatus('✓ Camera ready! Looking for faces...', 'info');
+        
+        // Start continuous face recognition
+        recognitionInterval = setInterval(recognizeFace, 2000);
+        
+      } catch (error) {
+        console.error('Camera error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function recognizeFace() {
+      try {
+        // Detect faces
+        const faces = await faceModel.estimateFaces(video, false);
+        
+        if (faces.length === 0) {
+          updateStatus('👤 No face detected. Please position your face in front of camera...', 'warning');
+          document.getElementById('userInfo').style.display = 'none';
+          return;
+        }
+        
+        if (faces.length > 1) {
+          updateStatus('⚠️ Multiple faces detected. Only one person at a time.', 'warning');
+          document.getElementById('userInfo').style.display = 'none';
+          return;
+        }
+        
+        updateStatus('👤 Face detected! Identifying person...', 'info');
+        
+        const face = faces[0];
+        
+        // Capture face image
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // Try to identify person
+        const response = await fetch(`${API_URL}/door/identify-face`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            faceLandmarks: face.landmarks,
+            faceImage: canvas.toDataURL('image/jpeg', 0.8)
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.identified) {
+          // Person identified!
+          updateStatus(`✅ Welcome ${data.user.nickname}!`, 'success');
+          
+          // Show user info
+          document.getElementById('userName').textContent = data.user.nickname;
+          document.getElementById('userEmail').textContent = data.user.email;
+          document.getElementById('confidence').textContent = (data.confidence * 100).toFixed(1) + '%';
+          document.getElementById('accessStatus').textContent = '✅ Access Granted';
+          document.getElementById('userInfo').style.display = 'block';
+          
+          // Unlock door
+          await unlockDoor();
+          
+          // Stop recognition after successful identification
+          setTimeout(() => {
+            stopRecognition();
+            updateStatus(`✅ Door unlocked for ${data.user.nickname}!`, 'success');
+          }, 3000);
+          
+        } else {
+          updateStatus('❌ Face not recognized. Access denied. Similarity: ' + (data.confidence * 100).toFixed(1) + '% (Required: 70%+)', 'error');
+          document.getElementById('userInfo').style.display = 'none';
+        }
+        
+      } catch (error) {
+        console.error('Recognition error:', error);
+        updateStatus('❌ Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function unlockDoor() {
+      try {
+        const response = await fetch(`${API_URL}/door/unlock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        console.log('Door unlock response:', data);
+        
+      } catch (error) {
+        console.error('Error unlocking door:', error);
+      }
+    }
+    
+    function stopRecognition() {
+      if (recognitionInterval) {
+        clearInterval(recognitionInterval);
+      }
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('stopBtn').style.display = 'none';
+      
+      updateStatus('Recognition stopped. Click "Start" to begin again.', 'info');
+    }
+    
+    function updateStatus(message, type) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+  </script>
+</body>
+</html>

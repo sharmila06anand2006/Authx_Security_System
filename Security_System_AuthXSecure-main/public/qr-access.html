@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Door Access - Smart Home</title>
+  <link rel="stylesheet" href="qr-access.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Step 1: Category Selection -->
+    <div id="category-screen" class="screen active">
+      <div class="container">
+        <h1>Welcome!</h1>
+        <p>Please select your category</p>
+        
+        <div class="category-grid">
+          <button class="category-btn" data-category="family">
+            <span class="icon">👨‍👩‍👧‍👦</span>
+            <span>Family</span>
+          </button>
+          <button class="category-btn" data-category="friends">
+            <span class="icon">👥</span>
+            <span>Friends</span>
+          </button>
+          <button class="category-btn" data-category="servants">
+            <span class="icon">🧹</span>
+            <span>Servants</span>
+          </button>
+          <button class="category-btn" data-category="delivery">
+            <span class="icon">📦</span>
+            <span>Delivery</span>
+          </button>
+          <button class="category-btn" data-category="guest">
+            <span class="icon">🚪</span>
+            <span>Guest</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 2: Phone Number Entry -->
+    <div id="phone-screen" class="screen">
+      <div class="container">
+        <h2>Enter Your Details</h2>
+        <form id="phone-form">
+          <input type="text" id="visitor-name" placeholder="Your Name" required>
+          <input type="tel" id="phone-number" placeholder="Phone Number" required>
+          <button type="submit">Continue</button>
+        </form>
+        <button class="back-btn" onclick="goBack()">← Back</button>
+      </div>
+    </div>
+    
+    <!-- Step 3: OTP Entry (Registered Users) -->
+    <div id="otp-screen" class="screen">
+      <div class="container">
+        <h2>Enter OTP</h2>
+        <p id="otp-message">Please enter the OTP sent to your phone</p>
+        <div id="otp-display" class="otp-display"></div>
+        <input type="text" id="otp-input" placeholder="Enter 6-digit OTP" maxlength="6">
+        <button id="verify-otp-btn">Verify OTP</button>
+        <button class="back-btn" onclick="goBack()">← Back</button>
+      </div>
+    </div>
+    
+    <!-- Step 4: Waiting for Admin OTP -->
+    <div id="waiting-screen" class="screen">
+      <div class="container">
+        <h2>Waiting for Admin Approval</h2>
+        <div class="spinner"></div>
+        <p>Your request has been sent to the admin.</p>
+        <p>Please wait while the admin generates your OTP...</p>
+        <div id="admin-otp-display"></div>
+        <button class="back-btn" onclick="location.reload()">Cancel</button>
+      </div>
+    </div>
+    
+    <!-- Step 5: Face Recognition -->
+    <div id="face-screen" class="screen">
+      <div class="container">
+        <h2>Face Recognition</h2>
+        <p>Please position your face in the camera</p>
+        <video id="face-video" autoplay playsinline></video>
+        <canvas id="face-canvas" style="display:none;"></canvas>
+        <p id="face-status">Initializing camera...</p>
+        <button id="capture-face-btn" style="display:none;">Capture & Verify</button>
+      </div>
+    </div>
+    
+    <!-- Step 6: Success -->
+    <div id="success-screen" class="screen">
+      <div class="container">
+        <div class="success-icon">✓</div>
+        <h2>Access Granted!</h2>
+        <p>Door is unlocking...</p>
+        <p>Welcome!</p>
+      </div>
+    </div>
+    
+    <!-- Step 7: Denied -->
+    <div id="denied-screen" class="screen">
+      <div class="container">
+        <div class="denied-icon">✗</div>
+        <h2>Access Denied</h2>
+        <p id="denied-message">Please contact the admin</p>
+        <button onclick="location.reload()">Try Again</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7"></script>
+  <script src="qr-access.js"></script>
+</body>
+</html>
