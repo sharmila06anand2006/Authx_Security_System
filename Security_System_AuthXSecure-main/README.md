@@ -248,9 +248,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-**Keerthi**
-- Email: ganthimathiv2006@gmail.com
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
+**Sharmila**
+- Email: sharmilanand0612@gmail.com
+- GitHub: https://github.com/sharmila06anand2006
 
 ## 🙏 Acknowledgments
 
@@ -262,12 +262,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-For support, email ganthimathiv2006@gmail.com or open an issue in the repository.
+For support, email sharmilaanand0612@gmail.com or open an issue in the repository.
 
 ## ⭐ Star History
 
 If you find this project useful, please consider giving it a star!
 
----
-
-**Made with ❤️ by Keerthi**
