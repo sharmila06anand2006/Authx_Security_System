@@ -3,8 +3,8 @@
 #include <Keypad.h>
 
 // WiFi credentials
-const char* ssid = "Keerthi";
-const char* password = "Madhumitha";
+const char* ssid = "Sharmila;
+const char* password = "Sharmi";
 
 // WebSocket server (Node.js server IP)
 const char* ws_host = "192.168.1.100"; // CHANGE THIS to your computer's IP
