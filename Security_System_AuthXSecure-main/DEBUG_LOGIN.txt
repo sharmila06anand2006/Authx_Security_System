@@ -25,8 +25,8 @@ STEP 3: Clear Cache & Reload
 
 STEP 4: Try to Login
 ---------------------
-1. Enter email: 230589.ec@rmkec.ac.in
-2. Enter password: keerthi123
+1. Enter email: 230022.ec@rmkec.ac.in
+2. Enter password: sharmila123
 3. Click "Sign In" button
 
 STEP 5: Check Console Output
@@ -34,7 +34,7 @@ STEP 5: Check Console Output
 You should see:
 === SIGN IN ATTEMPT ===
 Sign in button clicked
-Email: 230589.ec@rmkec.ac.in
+Email: 230022.ec@rmkec.ac.in
 Password length: 10
 Sending login request to: http://localhost:3000/api/auth/signin
 Response status: 200
@@ -55,7 +55,7 @@ Error 2: "Failed to fetch"
 
 Error 3: "Invalid credentials"
 → Wrong password
-→ Use: keerthi123
+→ Use: sharmila123
 
 Error 4: No console output at all
 → JavaScript not loading
@@ -72,7 +72,7 @@ If still not working, tell me:
 
 YOUR CREDENTIALS:
 -----------------
-Email: 230589.ec@rmkec.ac.in
-Password: keerthi123
+Email: 230022.ec@rmkec.ac.in
+Password: sharmila123
 
 ========================================
