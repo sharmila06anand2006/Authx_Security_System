@@ -16,8 +16,8 @@ Password: keerthi123
 
 **Step 1: Login**
 1. Open: http://localhost:3000
-2. Enter email: 230589.ec@rmkec.ac.in
-3. Enter password: keerthi123
+2. Enter email: 230022.ec@rmkec.ac.in
+3. Enter password: sharmila123
 4. Click "Sign In"
 5. ✅ You're logged in!
 
@@ -51,8 +51,8 @@ Password: keerthi123
 
 **Step 1: Login Again**
 1. Open: http://localhost:3000
-2. Enter email: 230589.ec@rmkec.ac.in
-3. Enter password: keerthi123
+2. Enter email: 230022.ec@rmkec.ac.in
+3. Enter password: sharmila123
 4. Click "Sign In"
 5. ✅ Logged in without any errors!
 
@@ -110,8 +110,8 @@ Password: keerthi123
 
 ### 4. Profile
 - View your profile
-- Nickname: Keerthi
-- Email: 230589.ec@rmkec.ac.in
+- Nickname: Sharmila
+- Email: 230022.ec@rmkec.ac.in
 - Face registered status
 
 ---
@@ -166,8 +166,8 @@ http://localhost:3000
 
 ### Login:
 ```
-Email: 230589.ec@rmkec.ac.in
-Password: keerthi123
+Email: 230022.ec@rmkec.ac.in
+Password: sharmila123
 ```
 
 ### Test Door Access:
@@ -218,6 +218,6 @@ If you encounter any issues:
 
 ---
 
-**Your Smart Home System is fully functional!** 🎉
+**Your Smart Visitor System is fully functional!** 🎉
 
 Login → Auto Face Registration → Logout → Login Again → Face Verification → All Working! ✅
