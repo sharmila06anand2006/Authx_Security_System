@@ -1,10 +1,10 @@
 # Face Recognition Training Guide
 
 ## Overview
-This guide will help you (Keerthi) train the face recognition model for secure door access.
+This guide will help you (Sharmila) train the face recognition model for secure door access.
 
 ## Prerequisites
-- Your account: 230589.ec@rmkec.ac.in
+- Your account: 230022.ec@rmkec.ac.in
 - Password: (your password)
 - Good lighting
 - Webcam/camera access
@@ -20,7 +20,7 @@ Server will run on http://localhost:3000
 ### 2. Login to Your Account
 1. Open http://localhost:3000 in your browser
 2. Click "Sign In"
-3. Enter your email: 230589.ec@rmkec.ac.in
+3. Enter your email: 230022.ec@rmkec.ac.in
 4. Enter your password
 5. Click "Sign In"
 
