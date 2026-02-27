@@ -224,8 +224,8 @@ The system guides you through 10 different poses:
 
 1. **Login** (if not already logged in)
    ```
-   Email: 230589.ec@rmkec.ac.in
-   Password: keerthi123
+   Email: 230022.ec@rmkec.ac.in
+   Password: sharmila123
    ```
 
 2. **Go to Door Access**
